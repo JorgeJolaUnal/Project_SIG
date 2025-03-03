@@ -1,0 +1,91 @@
+---
+title: "Programación SIG"
+author: ' '
+output:
+  flexdashboard::flex_dashboard:
+    logo: unal_logo.jpeg
+    favicon: unal_logo.jpeg
+    orientation: columns
+    theme: lumen
+runtime: shiny
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(flexdashboard)
+library(shiny)
+library(DT)
+library(ggpubr)
+library(readxl)
+library(plotly)
+library(cluster)
+library(factoextra)
+library(FactoMineR)
+library(ClustGeo)
+library(sf)
+```
+Analisis de Cluster Espacial
+=====================================================
+
+Row {.tabset } 
+--------------------------------------------
+```{r}
+datos <- reactiveValues(dataset = NULL, new_data = NULL, poligono = NULL)
+dataset=read_csv("pca_results.csv")
+cuanti=dataset
+xy <- cuanti %>% select(x, y)
+cuanti <- cuanti[, -c(1, 5, 6)]
+cuanti=scale(cuanti)
+D0 <- dist(cuanti)  # Distancias socioeconómicas
+D1 <- dist(xy)  # Distancias espaciales
+```
+
+
+```{r}
+fluidRow(
+  column(4, sliderInput("n_clust2", "Seleccione número de clusters", min = 1, max = 10, value = 5)),
+  column(4, sliderInput("alpha", "Seleccione alpha", min = 0, max = 1, value = 0.1))
+)
+
+```
+```{r}
+renderPlotly({
+  poligono <- st_read("polygons.geojson")
+  
+  tree <- hclustgeo(D0, D1, alpha = input$alpha)
+  P5bis <- cutree(tree, input$n_clust2)
+  
+  
+  if (!is.null(poligono)) {
+    poligono <- poligono %>%
+      mutate(clus = P5bis, COD = dataset$COD)
+  new_data=data.frame(COD=poligono$COD,
+                      Cluster=poligono$clus)
+  
+  datos$new_data <- data.frame(
+      COD = poligono$COD,
+      Cluster = poligono$clus
+    )
+    
+  datos$poligono <- poligono 
+  
+    p <- ggplot() +
+      geom_sf(data = poligono, aes(fill = as.factor(clus))) +
+      theme_minimal() +
+      labs(title = "Parcelas en el municipio de La Unión", fill = "Cluster") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1),
+            plot.title = element_text(hjust = 0.5)) +
+      coord_sf(expand = FALSE)
+    
+    ggplotly(p, tooltip = "text", width = 1450, height = 650)
+  }
+})
+
+
+
+```
