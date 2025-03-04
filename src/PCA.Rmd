@@ -29,8 +29,9 @@ fviz_pca_var(pca_result, col.var = "red", repel = TRUE)
 barplot(explained_var * 100, 
         names.arg = paste0("PC", 1:length(explained_var)), 
         las = 2, col = "steelblue",
-        ylab = "Varianza Explicada (%)",
-        main = "Varianza Explicada por cada Componente Principal")
+        ylab = "Explained Variance (%)",
+        main = "Explained Variance by Each Principal Component")
+
 ```
 
 ```{r}
@@ -46,7 +47,41 @@ df_pca$y=df_edafoclim$y
 ```
 ```{r}
 library(writexl)
-write.csv(df_pca, "pca_results.csv", row.names = FALSE)
+write.csv(df_pca, "/Users/jorgeandresjolahernandez/Desktop/Programacion SIG/Proyecto/Project_SIG/src/appResults/pca_results.csv", row.names = FALSE)
 ```
+
+```{r}
+library(readxl)
+datos=read_csv("/Users/jorgeandresjolahernandez/Desktop/Programacion SIG/Proyecto/Project_SIG/src/appResults/pca_results.csv")
+datos
+```
+```{r}
+cuanti=datos
+xy <- cuanti %>% select(x, y)
+cuanti <- cuanti[, -c(1, 5, 6)]
+cuanti=scale(cuanti)
+D0 <- dist(cuanti)  # Distancias socioeconómicas
+D1 <- dist(xy)  # Distancias espaciales
+
+range.alpha <- seq(0, 1, 0.1)
+cr <- choicealpha(D0, D1, range.alpha, 5, graph = FALSE)
+# Guardamos el gráfico como imagen
+plot_path <- "plot_image.png"  # Especifica la ruta de la imagen
+png(plot_path, width = 800, height = 900)  # Guardamos el gráfico como PNG
+plot(cr)  # Aquí generamos el gráfico
+
+
+tree <- hclustgeo(D0, D1, alpha = 0.8)
+P5bis <- cutree(tree, 5)
+
+```
+
+```{r}
+unique(datos$COD)
+df_cluster=data.frame(CODIGO=df_edafoclim$CODIGO,clust=P5bis)
+write_csv(df_cluster,"/Users/jorgeandresjolahernandez/Desktop/Programacion SIG/Proyecto/Project_SIG/results/clusters.csv")
+```
+
+
 
 
